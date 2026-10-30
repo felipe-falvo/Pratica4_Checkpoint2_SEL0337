@@ -10,14 +10,14 @@
 
 # 1. Introdução
 
-Essa prática tem como foco entender os protocolos de comunicação utilizados em sistemas embarcados.
+Essa prática tem como ideia entender os protocolos de comunicação utilizados em sistemas embarcados.
 
-O projeto utiliza uma Raspberry Pi que executa programas em Python, e um Arduino Uno, que executa programas e permite realizar operações de baixo nível, como aquisição de sinais analógicos e controle.
+O projeto utiliza uma Raspberry Pi que executa programas em Python, e um Arduino Uno, que executa programas e realiza operações como leitura de sinais e controle.
 
 A atividade é dividida em três checkpoints:
 
 - **Checkpoint 1: Comunicação I2C:** comunicação entre Raspberry Pi e Arduino para controlar o LED do microcontrolador.
-- **Checkpoint 2: Aquisição analógica:** leitura de um potenciômetro pelo Arduino e transmissão do valor para a Raspberry Pi por I2C.
+- **Checkpoint 2: Aquisição analógica:** leitura de um potenciômetro pelo Arduino e transmissão do valor para a Raspberry Pi.
 - **Checkpoint 3: RFID e SPI:** desenvolvimento de um sistema de controle de acesso utilizando um leitor RFID.
 
 ---
@@ -28,37 +28,33 @@ A atividade é dividida em três checkpoints:
 
 Estabelecer uma comunicação serial entre o Raspberry Pi e o Arduino Uno utilizando a comunicação I2C.
 
-A Raspberry Pi envia comandos pelo terminal, e o Arduino interpreta os valores recebidos para controlar o LED interno da placa. Dessa forma, o funcionamento da comunicação pode ser verificado tanto pelo LED, quanto pelo Monitor Serial do Arduino.
+A Raspberry Pi envia comandos pelo terminal, e o Arduino interpreta os valores recebidos para controlar o LED interno da placa. Dessa forma, o funcionamento da comunicação pode ser verificado tanto pelo LED, quanto pelo monitor do Arduino.
 
 ## 2.2. Funcionamento
 
 A comunicação é dividida entre duas plataformas:
 
-- **Raspberry Pi:** atua como controlador, iniciando a comunicação e enviando os comandos utilizando a biblioteca `SMBus`.
-- **Arduino Uno:** atua como dispositivo controlado, recebendo os comandos pela biblioteca `Wire`, interpretando os valores e alterando o estado do LED interno.
+- **Raspberry Pi:** funciona como controlador, iniciando a comunicação e enviando os comandos utilizando a biblioteca `SMBus`.
+- **Arduino Uno:** funciona como dispositivo controlado, recebendo os comandos pela biblioteca `Wire`, interpretando os valores e alterando o estado do LED interno.
 
 O endereço I2C configurado no Arduino é `0x08`.
 
-O funcionamento esperado é:
+O funcionamento é:
 
-* **Digitar `1`:** O Arduino acende o LED interno (`LED_BUILTIN`).
-* **Digitar `0`:** O Arduino apaga o LED interno (`LED_BUILTIN`).
+* **Digitar `1`:** O Arduino acende o LED interno.
+* **Digitar `0`:** O Arduino apaga o LED interno.
 * **Digitar qualquer outro valor:** O programa é encerrado.
-
-Quando recebe um comando, o Arduino também mostra seu valor no Monitor Serial.
 
 ## 2.3. Protocolo I2C
 
-O I2C é um protocolo de comunicação serial síncrona que utiliza duas linhas:
+O I2C é um protocolo de comunicação serial síncrona que utiliza duas ideias:
 
 - **SDA (Data):** transmissão dos dados.
-- **SCL (Clock):** clock utilizado para sincronizar a comunicação.
-
-A Raspberry Pi inicia as transferências, enquanto o Arduino responde no endereço configurado.
+- **SCL (Clock):** clock utilizado para sincronizar.
 
 ## 2.4. Hardware
 
-Como a Raspberry Pi utiliza níveis lógicos de 3,3 V e o Arduino Uno utiliza 5 V, foi utilizado um conversor de nível lógico bidirecional para adaptar os sinais do barramento e proteger as GPIOs da Raspberry Pi.
+Como a Raspberry Pi utiliza níveis lógicos de 3,3 V e o Arduino Uno utiliza 5 V, foi utilizado um conversor de nível lógico para adaptar os sinais do barramento.
 
 - **Alimentação de baixa tensão:** Conecta o Pino 1 da Raspberry Pi (3,3 V) ao pino **LV** do conversor.
 - **Alimentação de alta tensão:** Conecta o pino 5V do Arduino Uno ao pino **HV** do conversor.
@@ -94,13 +90,13 @@ sudo i2cdetect -y 1
 
 O dispositivo deverá aparecer no endereço `0x08`.
 
-Após gravar o programa no Arduino e conectar a montagem, abrir o Monitor Serial. No terminal da Raspberry Pi, executar:
+Após gravar o programa no Arduino e conectar a montagem, abrir o monitor serial. No terminal da Raspberry Pi, execute o código:
 
 ```bash
 python3 codigo_python.py
 ```
 
-Os comandos `1` e `0` devem acender e apagar o LED, respectivamente. Qualquer outro valor desliga o programa.
+Os comandos `1` e `0` devem acender e apagar o LED, e qualquer outro valor desligar o programa.
 
 ## 2.7. Demonstração
 
@@ -116,13 +112,13 @@ Os comandos `1` e `0` devem acender e apagar o LED, respectivamente. Qualquer ou
 
 ## 3.1. Objetivo
 
-Nesse segundo checkpoint a ideia é obter informação por meio da leitura analógica de um potenciômetro.
+Nesse segundo checkpoint, a ideia é obter informação por meio da leitura analógica de um potenciômetro.
 
 Assim, o Arduino realiza a leitura do sinal, organiza o valor e envia os dados pelo I2C. A Raspberry Pi recebe os bytes e organiza o valor.
 
 ## 3.2. Aquisição
 
-O potenciômetro é ligado a uma entrada analógica do Arduino Uno. Seu terminal é conectado ao pino `A0`, enquanto os outros terminais são conectados à alimentação e ao GND.
+O potenciômetro é ligado a uma entrada analógica do Arduino Uno. Seu terminal é conectado ao pino `A0`, enquanto os outros terminais são conectados a alimentação e ao GND.
 
 Ao girar o potenciômetro, a tensão aplicada à entrada analógica varia entre 0 e 5 V. O conversor analógico-digital de 10 bits do Arduino transforma essa tensão em um valor entre 0 e 1023.
 
@@ -131,7 +127,7 @@ Ao girar o potenciômetro, a tensão aplicada à entrada analógica varia entre 
 * **5 V**: Leitura digital 1023
 
 
-## 3.3. Transmissão de dados de 10 bits
+## 3.3. Transmissão de dados
 
 O barramento I2C transmite dados em unidades de 8 bits, enquanto a leitura do ADC do Arduino possui 10 bits.
 
@@ -145,25 +141,23 @@ No Arduino, as funções `highByte()` e `lowByte()` separam essas partes.
 ```cpp
 byte dados[2];
 
-dados[0] = highByte(valor_potenciometro);
-dados[1] = lowByte(valor_potenciometro);
+dados[0] =highByte(valor_potenciometro);
+dados[1] =lowByte(valor_potenciometro);
 
 Wire.write(dados, 2);
 ```
 
-O Arduino envia os dois bytes quando a Raspberry Pi solicita os dados por I2C.
-
-Na Raspberry Pi, os bytes recebidos são combinados multiplicando o byte mais significativo por 256 (deslocando 8 posições para a esquerda) e somando com o byte menos significativo, reconstruindo o valor de 10 bits enviado pelo Arduino.
+O Arduino envia os dois bytes. Na Raspberry Pi, os bytes recebidos são unidos multiplicando o byte mais significativo por 256 (deslocando 8 posições para a esquerda) e somando com o byte menos significativo, reconstruindo o valor de 10 bits enviado pelo Arduino.
 
 ```python
 byte_alto = dados[0]
 byte_baixo = dados[1]
 
-valor_final = (byte_alto * 256) + byte_baixo
+valor_final = (byte_alto * 256)+byte_baixo
 ```
 
 
-## 3.4. Funcionamento dos programas
+## 3.4. Funcionamento
 
 ### Programa do Arduino
 
@@ -218,13 +212,13 @@ Gire o potenciômetro e veja os valores nos dois terminais.
 
 ## 4.1. Objetivo
 
-Nesse terceiro checkpoint, a ideia é  utilizar um leitor RFID MFRC522 conectado à Raspberry Pi, no qual o sistema identifica as tags aproximadas do leitor e verifica se a identificação é o cartão autorizado.
+Nesse terceiro checkpoint, a ideia é  utilizar um leitor RFID MFRC522 conectado à Raspberry Pi, no qual o sistema identifica as tags aproximadas do leitor e verifica se é o cartão autorizado.
 
 ## 4.2. RFID e comunicação SPI
 
 RFID (Radio-Frequency Identification) é uma ferramente que identifica objetos por radiofrequência, no qual o leitor estabelece comunicação com uma tag e obtém informações de identificação e pode armazenar dados dentro dela.
 
-O SPI é um protocolo serial síncrono que utiliza linhas para as funções de comunicação:
+O SPI é um protocolo síncrono que utiliza linhas para as funções de comunicação:
 
 - **MOSI:** transmissão de dados do controlador para o dispositivo controlado.
 - **MISO:** transmissão de dados do dispositivo controlado para o controlador.
@@ -233,13 +227,13 @@ O SPI é um protocolo serial síncrono que utiliza linhas para as funções de c
 
 ## 4.3. Funcionamento do sistema
 
-O script está dividido em três códigos.
+Está dividido em três códigos.
 
 ### Gravação da tag — `gravacao.py`
 
 O programa utiliza a classe `SimpleMFRC522` para inicializar o leitor RFID e gravar o texto definido na variável `texto`.
 
-Na implementação, o texto utilizado é:
+No código, o texto escolhido foi:
 
 ```python
 texto = "12345678"
@@ -292,7 +286,7 @@ Acessar:
 
 `Interface Options → SPI → Enable`
 
-Instalar a biblioteca, caso ainda não esteja instalada:
+Instalar a biblioteca:
 
 ```bash
 pip3 install mfrc522
