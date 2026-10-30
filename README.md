@@ -118,34 +118,29 @@ Os comandos `1` e `0` devem acender e apagar o LED, respectivamente. Qualquer ou
 
 Nesse segundo checkpoint a ideia é obter informação por meio da leitura analógica de um potenciômetro.
 
-Assim, o Arduino realiza a aquisição do sinal, organiza o valor e envia os dados pelo barramento I2C. A Raspberry Pi recebe os bytes e reconstrói o valor.
+Assim, o Arduino realiza a leitura do sinal, organiza o valor e envia os dados pelo I2C. A Raspberry Pi recebe os bytes e organiza o valor.
 
 ## 3.2. Aquisição
 
 O potenciômetro é ligado a uma entrada analógica do Arduino Uno. Seu terminal é conectado ao pino `A0`, enquanto os outros terminais são conectados à alimentação e ao GND.
 
-Ao girar o potenciômetro, a tensão aplicada à entrada analógica varia entre 0 e 5 V.
+Ao girar o potenciômetro, a tensão aplicada à entrada analógica varia entre 0 e 5 V. O conversor analógico-digital de 10 bits do Arduino transforma essa tensão em um valor entre 0 e 1023.
 
-O conversor analógico-digital (ADC) de 10 bits do Arduino transforma essa tensão em um valor digital entre 0 e 1023.
+* **0 V**: Leitura digital 0
+* **2,5 V**: Leitura digital 512, aproximadamente
+* **5 V**: Leitura digital 1023
 
-| Tensão aproximada | Leitura digital |
-|---|---:|
-| 0 V | 0 |
-| 2,5 V | 512, aproximadamente |
-| 5 V | 1023 |
-
-Esses valores são aproximados e dependem da tensão de referência e das condições do circuito.
 
 ## 3.3. Transmissão de dados de 10 bits
 
 O barramento I2C transmite dados em unidades de 8 bits, enquanto a leitura do ADC do Arduino possui 10 bits.
 
-Por isso, um único byte não é suficiente para representar todos os valores possíveis do potenciômetro. Para preservar a informação, o valor é dividido em dois bytes:
+Por isso, um único byte não é suficiente para representar todos os valores do potenciômetro, por esse motivo que o valor é dividido em dois bytes:
 
-- **Byte alto:** contém os bits mais significativos.
-- **Byte baixo:** contém os bits menos significativos.
+- **Byte alto:** bits mais significativos
+- **Byte baixo:** bits menos significativos
 
-No Arduino, as funções `highByte()` e `lowByte()` separam essas partes do valor original.
+No Arduino, as funções `highByte()` e `lowByte()` separam essas partes.
 
 ```cpp
 byte dados[2];
@@ -158,13 +153,15 @@ Wire.write(dados, 2);
 
 O Arduino envia os dois bytes quando a Raspberry Pi solicita os dados por I2C.
 
-Na Raspberry Pi, os bytes recebidos são combinados utilizando deslocamento de bits e a operação OR:
+Na Raspberry Pi, os bytes recebidos são combinados multiplicando o byte mais significativo por 256 (deslocando 8 posições para a esquerda) e somando com o byte menos significativo, reconstruindo o valor de 10 bits enviado pelo Arduino.
 
 ```python
-valor_final = (byte_alto << 8) | byte_baixo
+byte_alto = dados[0]
+byte_baixo = dados[1]
+
+valor_final = (byte_alto * 256) + byte_baixo
 ```
 
-A operação `<< 8` desloca o byte alto oito posições para a esquerda, enquanto `|` combina os bits das duas partes. Dessa forma, é possível reconstruir o valor original de 10 bits.
 
 ## 3.4. Funcionamento dos programas
 
@@ -174,20 +171,16 @@ O arquivo `codigo_arduino.ino` utiliza a biblioteca `Wire` para configurar o dis
 
 A função `Wire.onRequest()` registra a função que será executada quando a Raspberry Pi solicitar os dados. Nessa função, o Arduino:
 
-1. Lê o valor analógico do pino `A0` por meio de `analogRead()`.
+1. Le o valor analógico do pino `A0` por meio de `analogRead()`
 2. Separa o valor em dois bytes utilizando `highByte()` e `lowByte()`.
-3. Envia os bytes pelo barramento I2C com `Wire.write()`.
-4. Exibe o valor original no Monitor Serial.
-
-A comunicação serial é configurada para 9600 baud, permitindo acompanhar os valores enviados.
+3. Envia os bytes com `Wire.write()`.
+4. Mostra o valor no Serial.
 
 ### Programa da Raspberry Pi
 
-O arquivo `codigo_python.py` utiliza a biblioteca `SMBus` para acessar o barramento I2C número 1.
+O arquivo `codigo_python.py` utiliza a biblioteca `SMBus` para acessar o barramento.
 
-O programa solicita os dados ao Arduino, separa os bytes recebidos e reconstrói o valor original. O resultado é exibido no terminal da Raspberry Pi, permitindo compará-lo com a leitura apresentada no Monitor Serial do Arduino.
-
-O intervalo de 0,5 segundo entre as leituras permite acompanhar as mudanças de posição do potenciômetro.
+O programa solicita os dados ao Arduino, separa os bytes recebidos e organiza o valor. O resultado é exibido no terminal da Raspberry Pi para comparar com o valor mostrado no serial do Arduino.
 
 ## 3.5. Arquivos do checkpoint
 
@@ -196,25 +189,20 @@ O intervalo de 0,5 segundo entre as leituras permite acompanhar as mudanças de 
 - [`hardware.jpeg`](Pratica4_checkpoint_2/hardware.jpeg): fotografia da montagem física.
 - [`video_prova.mp4`](Pratica4_checkpoint_2/video_prova.mp4): vídeo de demonstração.
 
-## 3.6. Execução e validação
+## 3.6. Validação
 
-Com o Arduino programado e conectado à Raspberry Pi, executar o programa Python:
+Com o Arduino programado e conectado a Raspberry, execute o programa Python:
 
 ```bash
 python3 codigo_python.py
 ```
 
-Girar o potenciômetro e observar os valores apresentados nos dois terminais.
+Gire o potenciômetro e veja os valores nos dois terminais.
 
-A validação deve confirmar que:
-
-- A leitura do potenciômetro varia de acordo com sua posição.
-- O Arduino envia os dados solicitados pela Raspberry Pi.
-- Os dois bytes são interpretados na ordem correta.
-- O valor reconstruído permanece na faixa de 0 a 1023.
-- O valor apresentado pela Raspberry Pi corresponde ao valor lido pelo Arduino.
-
-**Observação sobre a implementação:** no código Python utilizado, a variável que representa o barramento foi criada com o nome `barramento`. Portanto, a chamada de leitura deve utilizar esse mesmo nome. Além disso, o método `read_i2c_block_data()` segue as convenções de leitura em bloco SMBus, que precisam ser compatíveis com o formato de resposta enviado pelo Arduino. Caso a leitura não corresponda aos dois bytes enviados, será necessário ajustar o método de leitura ou o formato da resposta para garantir a reconstrução correta.
+- A leitura do potenciômetro varia com sua posição.
+- Arduino envia os dados solicitados pela Raspberry Pi.
+- O valor ficam entre 0 e 1023.
+- O valor que está no Raspberry Pi é igual ao valor lido pelo Arduino.
 
 ## 3.7. Demonstração
 
